@@ -9,11 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get("token")?.value;
     let payload: any = null;
-<<<<<<< HEAD
 
-=======
-    
->>>>>>> 5fb8ac7293bf81f616a33be4789a48b7aaf6d07e
     if (token) {
       const { verifyToken } = await import("@/lib/jwt");
       payload = await verifyToken(token);
@@ -31,15 +27,6 @@ export async function GET(request: NextRequest) {
     if (trang_thai) where.trang_thai = trang_thai;
     if (do_uu_tien) where.do_uu_tien = do_uu_tien;
     if (trang_thai_phe_duyet) where.trang_thai_phe_duyet = trang_thai_phe_duyet;
-    
-    // Filter by user ID if provided (for citizen to see only their requests)
-    // Or if user is citizen, only show their own requests
-    if (id_nguoi_dung) {
-      where.id_nguoi_dung = parseInt(id_nguoi_dung);
-    } else if (payload && payload.vai_tro === "citizen") {
-      // Citizen can only see their own requests
-      where.id_nguoi_dung = payload.userId;
-    }
 
     // Filter by user ID if provided (for citizen to see only their requests)
     // Or if user is citizen, only show their own requests

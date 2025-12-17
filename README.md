@@ -357,9 +357,9 @@ Dự án này được cấp phép theo MIT License - xem file [LICENSE](LICENSE
 ## 👥 Team
 
 - **Lead Developer**: [Trương Quang Thịnh]
-- **Backend Developer**: [Phan Nhật Trường]
-- **Frontend Developer**: [Name]
-- **UI/UX Designer**: [Name]
+- **Backend Developer**: [Phan Nhật Trường, Trương Quang Thịnh]
+- **Frontend Developer**: [Nguyễn Thanh Ly, Văn Viết Tường Huy]
+- **UI/UX Designer**: [All Team.]
 
 ## 🆘 Hỗ trợ
 

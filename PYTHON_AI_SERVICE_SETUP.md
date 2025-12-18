@@ -24,7 +24,7 @@ Hoặc sử dụng virtual environment:
 ```bash
 cd ai-service
 python -m venv venv
-source venv/bin/activate  # Trên Windows: venv\Scripts\activate
+source venv\Scripts\activate
 pip install -r requirements.txt
 ```
 

@@ -202,12 +202,33 @@ export async function POST(request: NextRequest) {
     try {
       const { country } = await reverseGeocodeWithCountry(parsedLat, parsedLng);
 
-      const countryLower = country?.toLowerCase() || "";
-      const isVietnamCountry = countryLower === "việt nam" || countryLower === "vietnam" || countryLower.includes("vietnam");
+      // Chuẩn hóa tên nước để so sánh ổn định (bỏ dấu)
+      const countryLower = country
+        ?.toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") || "";
+
+      const isVietnamCountry =
+        countryLower === "viet nam" ||
+        countryLower === "vietnam" ||
+        countryLower.includes("vietnam");
 
       console.log("🌍 [API CREATE] Geocoding country result:", country, "isVietnam:", isVietnamCountry);
 
-      if (!isVietnamCountry) {
+      if (!countryLower) {
+        // Không lấy được country (ví dụ thiếu MAPBOX_TOKEN, lỗi dữ liệu Mapbox ...)
+        // => fallback: dùng bounds check để không chặn sai yêu cầu hợp lệ trong VN
+        const isInVietnam = isWithinVietnamBounds(parsedLat, parsedLng);
+        console.log("⚠️ [API CREATE] Country is null, fallback to bounds check. InVietnam:", isInVietnam);
+
+        if (!isInVietnam) {
+          console.log("🚫 [API CREATE] BLOCKING: Location outside Vietnam bounds (no country data)");
+          return NextResponse.json(
+            { error: "Chỉ chấp nhận yêu cầu trong lãnh thổ Việt Nam. Vui lòng chọn vị trí khác." },
+            { status: 400 },
+          );
+        }
+      } else if (!isVietnamCountry) {
         console.log("🚫 [API CREATE] BLOCKING: Country is not Vietnam:", country);
         return NextResponse.json(
           { error: `Chỉ chấp nhận yêu cầu trong lãnh thổ Việt Nam. Vị trí này thuộc: ${country || "Không xác định"}.` },

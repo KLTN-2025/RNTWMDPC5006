@@ -199,15 +199,26 @@ export default function CitizenRequestsPage() {
         setCreateForm((prev) => ({ ...prev, dia_chi: address }));
       }
 
-      // Check country from geocoding API (MORE ACCURATE than bounds check)
-      const countryLower = country?.toLowerCase() || "";
-      const isVietnamCountry = countryLower === "việt nam" || countryLower === "vietnam" || countryLower.includes("vietnam");
+      // Check country from geocoding API (ưu tiên hơn bounds)
+      const countryLower =
+        country
+          ?.toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "") || "";
 
-      if (country && !isVietnamCountry) {
+      const isVietnamCountry =
+        countryLower === "viet nam" ||
+        countryLower === "vietnam" ||
+        countryLower.includes("vietnam");
+
+      if (countryLower && !isVietnamCountry) {
         setLocationWarning(`⚠️ Không phải lãnh thổ Việt Nam (${country})`);
-      } else if (!isVietnamCountry && !isInVietnam) {
+      } else if (!countryLower && !isInVietnam) {
         setLocationWarning("⚠️ Không phải lãnh thổ Việt Nam");
+      } else if (!countryLower && isInVietnam) {
+        setLocationWarning(null);
       } else if (isVietnamCountry && !isInVietnam) {
+        // Ưu tiên kết quả geocoding nếu xác định rõ là Việt Nam
         setLocationWarning(null);
       }
     } catch (error) {
@@ -245,13 +256,23 @@ export default function CitizenRequestsPage() {
       }
 
       // Check country from geocoding API
-      const countryLower = country?.toLowerCase() || "";
-      const isVietnamCountry = countryLower === "việt nam" || countryLower === "vietnam" || countryLower.includes("vietnam");
+      const countryLower =
+        country
+          ?.toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "") || "";
 
-      if (country && !isVietnamCountry) {
+      const isVietnamCountry =
+        countryLower === "viet nam" ||
+        countryLower === "vietnam" ||
+        countryLower.includes("vietnam");
+
+      if (countryLower && !isVietnamCountry) {
         setEditLocationWarning(`⚠️ Không phải lãnh thổ Việt Nam (${country})`);
-      } else if (!isVietnamCountry && !isInVietnam) {
+      } else if (!countryLower && !isInVietnam) {
         setEditLocationWarning("⚠️ Không phải lãnh thổ Việt Nam");
+      } else if (!countryLower && isInVietnam) {
+        setEditLocationWarning(null);
       } else if (isVietnamCountry && !isInVietnam) {
         setEditLocationWarning(null);
       }
@@ -313,17 +334,67 @@ export default function CitizenRequestsPage() {
     // CRITICAL: Use reverse geocoding to check ACTUAL country
     try {
       const { reverseGeocodeWithCountry } = await import("@/lib/geocoding");
-      const { country } = await reverseGeocodeWithCountry(createLocation.lat, createLocation.lng);
+      const { country } = await reverseGeocodeWithCountry(
+        createLocation.lat,
+        createLocation.lng
+      );
 
-      const countryLower = country?.toLowerCase() || "";
-      const isVietnamCountry = countryLower === "việt nam" || countryLower === "vietnam" || countryLower.includes("vietnam");
+      const countryLower =
+        country
+          ?.toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "") || "";
 
-      console.log("🌍 [CITIZEN CREATE] Geocoding country result:", country, "isVietnam:", isVietnamCountry);
+      const isVietnamCountry =
+        countryLower === "viet nam" ||
+        countryLower === "vietnam" ||
+        countryLower.includes("vietnam");
 
-      if (!isVietnamCountry) {
-        console.log("🚫 [CITIZEN CREATE] BLOCKING: Country is not Vietnam:", country);
-        showError(`Chỉ chấp nhận yêu cầu trong lãnh thổ Việt Nam. Vị trí này thuộc: ${country || "Không xác định"}.`);
-        setCreateError(`Chỉ chấp nhận yêu cầu trong lãnh thổ Việt Nam. Vị trí này thuộc: ${country || "Không xác định"}.`);
+      console.log(
+        "🌍 [CITIZEN CREATE] Geocoding country result:",
+        country,
+        "isVietnam:",
+        isVietnamCountry
+      );
+
+      if (!countryLower) {
+        // Không có thông tin country → fallback sang bounds check
+        const isInVietnam = isWithinVietnamBounds(
+          createLocation.lat,
+          createLocation.lng
+        );
+        console.log(
+          "⚠️ [CITIZEN CREATE] Country is null, fallback to bounds check. InVietnam:",
+          isInVietnam
+        );
+
+        if (!isInVietnam) {
+          console.log(
+            "🚫 [CITIZEN CREATE] BLOCKING: Location outside Vietnam bounds (no country data)"
+          );
+          showError(
+            "Chỉ chấp nhận yêu cầu trong lãnh thổ Việt Nam. Vui lòng chọn vị trí khác."
+          );
+          setCreateError(
+            "Chỉ chấp nhận yêu cầu trong lãnh thổ Việt Nam. Vui lòng chọn vị trí khác."
+          );
+          return;
+        }
+      } else if (!isVietnamCountry) {
+        console.log(
+          "🚫 [CITIZEN CREATE] BLOCKING: Country is not Vietnam:",
+          country
+        );
+        showError(
+          `Chỉ chấp nhận yêu cầu trong lãnh thổ Việt Nam. Vị trí này thuộc: ${
+            country || "Không xác định"
+          }.`
+        );
+        setCreateError(
+          `Chỉ chấp nhận yêu cầu trong lãnh thổ Việt Nam. Vị trí này thuộc: ${
+            country || "Không xác định"
+          }.`
+        );
         return;
       }
     } catch (error) {
@@ -463,17 +534,66 @@ export default function CitizenRequestsPage() {
     // CRITICAL: Use reverse geocoding to check ACTUAL country
     try {
       const { reverseGeocodeWithCountry } = await import("@/lib/geocoding");
-      const { country } = await reverseGeocodeWithCountry(locationToValidate.lat, locationToValidate.lng);
+      const { country } = await reverseGeocodeWithCountry(
+        locationToValidate.lat,
+        locationToValidate.lng
+      );
 
-      const countryLower = country?.toLowerCase() || "";
-      const isVietnamCountry = countryLower === "việt nam" || countryLower === "vietnam" || countryLower.includes("vietnam");
+      const countryLower =
+        country
+          ?.toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "") || "";
 
-      console.log("🌍 [CITIZEN UPDATE] Geocoding country result:", country, "isVietnam:", isVietnamCountry);
+      const isVietnamCountry =
+        countryLower === "viet nam" ||
+        countryLower === "vietnam" ||
+        countryLower.includes("vietnam");
 
-      if (!isVietnamCountry) {
-        console.log("🚫 [CITIZEN UPDATE] BLOCKING: Country is not Vietnam:", country);
-        showError(`Chỉ chấp nhận yêu cầu trong lãnh thổ Việt Nam. Vị trí này thuộc: ${country || "Không xác định"}.`);
-        setEditError(`Chỉ chấp nhận yêu cầu trong lãnh thổ Việt Nam. Vị trí này thuộc: ${country || "Không xác định"}.`);
+      console.log(
+        "🌍 [CITIZEN UPDATE] Geocoding country result:",
+        country,
+        "isVietnam:",
+        isVietnamCountry
+      );
+
+      if (!countryLower) {
+        const isInVietnam = isWithinVietnamBounds(
+          locationToValidate.lat,
+          locationToValidate.lng
+        );
+        console.log(
+          "⚠️ [CITIZEN UPDATE] Country is null, fallback to bounds check. InVietnam:",
+          isInVietnam
+        );
+
+        if (!isInVietnam) {
+          console.log(
+            "🚫 [CITIZEN UPDATE] BLOCKING: Location outside Vietnam bounds (no country data)"
+          );
+          showError(
+            "Chỉ chấp nhận yêu cầu trong lãnh thổ Việt Nam. Vui lòng chọn vị trí khác."
+          );
+          setEditError(
+            "Chỉ chấp nhận yêu cầu trong lãnh thổ Việt Nam. Vui lòng chọn vị trí khác."
+          );
+          return;
+        }
+      } else if (!isVietnamCountry) {
+        console.log(
+          "🚫 [CITIZEN UPDATE] BLOCKING: Country is not Vietnam:",
+          country
+        );
+        showError(
+          `Chỉ chấp nhận yêu cầu trong lãnh thổ Việt Nam. Vị trí này thuộc: ${
+            country || "Không xác định"
+          }.`
+        );
+        setEditError(
+          `Chỉ chấp nhận yêu cầu trong lãnh thổ Việt Nam. Vị trí này thuộc: ${
+            country || "Không xác định"
+          }.`
+        );
         return;
       }
     } catch (error) {
@@ -801,12 +921,20 @@ export default function CitizenRequestsPage() {
                   <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Loại yêu cầu <span className="text-red-500">*</span>
                   </label>
-                  <Input
-                    type="text"
+                  <select
                     value={createForm.loai_yeu_cau}
                     onChange={(e) => handleCreateFormChange("loai_yeu_cau", e.target.value)}
-                    placeholder="VD: Thực phẩm, Nước uống, Thuốc men..."
-                  />
+                    className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2 text-sm text-gray-800 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                  >
+                    <option value="">Chọn loại yêu cầu</option>
+                    <option value="Thực phẩm">🍚 Thực phẩm</option>
+                    <option value="Nước uống">💧 Nước uống</option>
+                    <option value="Thuốc men">💊 Thuốc men</option>
+                    <option value="Quần áo">👕 Quần áo</option>
+                    <option value="Chăn màn">🛏️ Chăn màn</option>
+                    <option value="Cứu hộ">🚨 Cứu hộ khẩn cấp</option>
+                    <option value="Khác">📦 Khác</option>
+                  </select>
                 </div>
 
                 <div className="md:col-span-2">
@@ -853,7 +981,7 @@ export default function CitizenRequestsPage() {
 
                 <div className="md:col-span-2">
                   <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Địa chỉ (tự động điền từ bản đồ)
+                    Địa chỉ <span className="text-gray-400">(tự động điền khi chọn trên bản đồ)</span>
                   </label>
                   <Input
                     type="text"
@@ -938,12 +1066,20 @@ export default function CitizenRequestsPage() {
                   <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Loại yêu cầu <span className="text-red-500">*</span>
                   </label>
-                  <Input
-                    type="text"
+                  <select
                     value={editForm.loai_yeu_cau}
                     onChange={(e) => handleEditFormChange("loai_yeu_cau", e.target.value)}
-                    placeholder="VD: Thực phẩm, Nước uống, Thuốc men..."
-                  />
+                    className="w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2 text-sm text-gray-800 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                  >
+                    <option value="">Chọn loại yêu cầu</option>
+                    <option value="Thực phẩm">🍚 Thực phẩm</option>
+                    <option value="Nước uống">💧 Nước uống</option>
+                    <option value="Thuốc men">💊 Thuốc men</option>
+                    <option value="Quần áo">👕 Quần áo</option>
+                    <option value="Chăn màn">🛏️ Chăn màn</option>
+                    <option value="Cứu hộ">🚨 Cứu hộ khẩn cấp</option>
+                    <option value="Khác">📦 Khác</option>
+                  </select>
                 </div>
 
                 <div className="md:col-span-2">
@@ -990,7 +1126,7 @@ export default function CitizenRequestsPage() {
 
                 <div className="md:col-span-2">
                   <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Địa chỉ (tự động điền từ bản đồ)
+                    Địa chỉ <span className="text-gray-400">(tự động điền khi chọn trên bản đồ)</span>
                   </label>
                   <Input
                     type="text"
